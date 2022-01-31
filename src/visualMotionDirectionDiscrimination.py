@@ -1,6 +1,8 @@
 from psychopy import visual, event, core, gui, data
 import os                           # for file/folder operations
 import numpy.random as rnd          # for random number generators
+from psychopy.hardware import keyboard
+
 
 #setting a global sut down key = escape
 event.globalKeys.add(key='escape', func=core.quit, name='shutdown')
@@ -53,12 +55,11 @@ rdk = visual.DotStim(
 
 ISI = visual.TextStim(win,text=" ",color='red', height=20)
 
-
 directionList= [{'dirName': 'LEFT', 'dirVal': 180.0}, {'dirName': 'RIGHT', 'dirVal': 0.0}, {'dirName': 'UP', 'dirVal': 90.0}, {'dirName': 'DOWN', 'dirVal': -90.0}]
 #rnd.shuffle(directionList)
 
 stimulus_duration = 1
-response_duration = 1
+response_duration = 2
 ISI_duration = 2
 
 trials = data.TrialHandler(directionList, nReps=3, extraInfo=exp_info,
@@ -69,17 +70,17 @@ rt_clock = core.Clock()
 ISI_onset = core.Clock()
 key_onset = core.Clock()
 
-    
-keys = event.getKeys(keyList=['left','right', 'up','down', 'escape', 'space'])
+kb = keyboard.Keyboard()
 
 nDone = 0
 for itrial in trials:
     print(itrial['dirVal'])
     # Set the clocks to 0
     stimulus_onset.reset()
-    rt_clock.reset()
     ISI_onset.reset()
     key_onset.reset()
+    kb.clock.reset()  # when you want to start the timer from
+    keys = kb.getKeys(['right', 'left', 'up','down'])
     # Start the trial
     while stimulus_onset.getTime() < stimulus_duration:
         rdk.setDir(itrial['dirVal'])
@@ -88,43 +89,24 @@ for itrial in trials:
         win.flip()
         # For the stimulus duration,
         # Listen for the keys
-    key_onset.reset()
-    #rt_clock.reset()
     while key_onset.getTime() <= response_duration:
-        keys = event.getKeys(keyList=['left','right', 'up','down', 'escape', 'space'])
+        keys = kb.getKeys(['right', 'left', 'up','down', 'escape'])
         if len(keys) > 0:
             break
-        
-    # Analyze the keypress
-    if keys:
-        keyResponse = event.getKeys(keyList=['left','right', 'up','down', 'escape', 'space'])
-        rt = rt_clock.getTime()
-        '''if 'escape' in keys:
-            # Escape press = quit the experiment
-            break
-        else:
-            # arrow keys = collect responses; register response time
-            keyResponse = keys #event.getKeys(keyList=['left','right', 'up','down', 'escape', 'space'])
-            rt = rt_clock.getTime()'''
-
-    else:
-        # No press = missed trial; maximal response time
-        keyResponse = 0
-        rt = 0
-        
+    for key in keys:
+        keyResponse = key.name
+        rt= key.rt
+        print(key.name, key.rt, key.duration)
+  
     while ISI_onset.getTime() < ISI_duration:
         ISI.draw()
         win.flip()
         
-    
-
-
     # Add the current trial's data to the TrialHandler
 
     trials.data.add('rt', rt)  # add the data to our set
     trials.data.add('keyResponse', keyResponse)
-    
-    
+ 
     nDone += 1
 
     # Advance to the next trial
@@ -139,26 +121,3 @@ trials.saveAsWideText(data_fname + '.csv', delim=',')
 
 # Quit the experiment
 win.close()
-
-'''# Write summary data to screen
-trials.printAsText(stimOut=['sf', 'ori'],
-                   dataOut=['RT_mean', 'RT_std', 'choice_raw'])
-
-# Write summary data to a text file ...
-trials.saveAsText(fileName='testData',
-                  stimOut=['sf', 'ori'],
-                  dataOut=['RT_mean', 'RT_std', 'choice_raw'])
-
-# ... or an xlsx file (which supports sheets)
-trials.saveAsExcel(fileName='testData',
-                   sheetName='rawData',
-                   stimOut=['sf', 'ori'],
-                   dataOut=['RT_mean', 'RT_std', 'choice_raw'])
-
-# Save a copy of the whole TrialHandler object, which can be reloaded later to
-# re-create the experiment.
-trials.saveAsPickle(fileName='testData')
-
-# Wide format is useful for analysis with R or SPSS.
-df = trials.saveAsWideText('testDataWide.txt')'''
-
