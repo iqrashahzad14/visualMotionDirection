@@ -72,6 +72,11 @@ key_onset = core.Clock()
 
 kb = keyboard.Keyboard()
 
+text = visual.TextStim(win, text='Block: Hand Position')
+text.draw()
+win.flip()
+core.wait(3)  # seconds
+
 nDone = 0
 for itrial in trials:
     print(itrial['dirVal'])
@@ -97,6 +102,8 @@ for itrial in trials:
         keyResponse = key.name
         rt= key.rt
         print(key.name, key.rt, key.duration)
+        trials.data.add('rt', rt)  # add the data to our set
+        trials.data.add('keyResponse', keyResponse)
   
     while ISI_onset.getTime() < ISI_duration:
         ISI.draw()
@@ -104,8 +111,7 @@ for itrial in trials:
         
     # Add the current trial's data to the TrialHandler
 
-    trials.data.add('rt', rt)  # add the data to our set
-    trials.data.add('keyResponse', keyResponse)
+    
  
     nDone += 1
 
