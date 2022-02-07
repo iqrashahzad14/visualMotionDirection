@@ -1,51 +1,47 @@
+'''
+Psychopy Experiment
+Visual Motion Direction Discrimination Task
+Exp design: 2 hand positions/Blocks X 4 directions/Trials
+RDKs move in 4 translational directions
+Task- press the arrow keys relevant for each direction
+record the response accuracy and reaction time 
+-Iqra Shahzad'''
+
+
 from psychopy import visual, event, core, gui, data
 import os                           # for file/folder operations
-import numpy.random as rnd          # for random number generators
+import numpy as np          
 from psychopy.hardware import keyboard
+import random, os, csv
 
 
 #setting a global sut down key = escape
 event.globalKeys.add(key='escape', func=core.quit, name='shutdown')
 
-datapath = 'data'
-# Get subject name, gender, age, handedness through a dialog box
-exp_name = 'RDK Direction'
-exp_info = {
-            'participantID': '',
-            'participantName': '',
-            'gender': '',
-            'age':'',
-            'handedness': '',
-            
-            }
-dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)
+exp_name = "RDKMotionDirection"
+info = {'subNb':'','sessionNb':'','handedness':""}
+if not gui.DlgFromDict(info, order=['subNb', 'sessionNb', 'handedness']).OK:      
+    core.quit()  
+#log
+log_path = '/Users/shahzad/Documents/PsychopyExpt/myPsychopyhapticsexpt/visMotinDirecJupyter/data/'+'sub'+ info['subNb']+'_'+ data.getDateStr(format="%Y-%m-%d-%H%M")
+log = open(log_path+".csv",'w')  
+writer = csv.writer(log, delimiter=";")
+cols="subNb","blockNb","handPos","trialNb","trialDirection","respKey","RT", "accuracy"
+writer.writerow(cols)
 
-# If 'Cancel' is pressed, quit
-if dlg.OK == False:
-    core.quit()
-
-# Get date and time
-exp_info['date'] = data.getDateStr()
-exp_info['exp_name'] = exp_name
-
-# Create a unique filename for the experiment data
-if not os.path.isdir(datapath):
-    os.makedirs(datapath)
-data_fname = exp_info['participantID'] + '_' + exp_info['date']
-data_fname = os.path.join(datapath, data_fname)
-
-win = visual.Window(
-    size=[1536, 960], fullscr=True, screen=0, 
+#set the screen
+win = visual.Window(size=[1536, 960], fullscr=True, screen=0, 
     winType='pyglet', allowGUI=False, allowStencil=False,
     monitor='testMonitor', color=[0,0,0], colorSpace='rgb',
     blendMode='avg', useFBO=True)
 
-fixSpot = visual.ShapeStim(win,vertices='cross',units='pix', size=(10,10),color='black',ori=0, pos=(0, 0),
+#stimuli
+
+fixCross = visual.ShapeStim(win,vertices='cross',units='pix', size=(10,10),color='black',ori=0, pos=(0, 0),
     lineWidth=1,     colorSpace='rgb',  lineColor=[1,1,1], fillColor=[1,1,1],
     opacity=1, depth=-1.0, interpolate=True)
 
-rdk = visual.DotStim(
-    win,units='pix', 
+rdk = visual.DotStim(win,units='pix', 
     nDots=50, dotSize=20,
     speed=4, dir=1.0,  coherence=1.0,
     fieldPos=(0.0, 0.0), fieldSize=(800,800),fieldShape='circle',
@@ -53,107 +49,88 @@ rdk = visual.DotStim(
     color=[1.0,1.0,1.0], colorSpace='rgb', opacity=1,
     depth=0.0, name='',autoLog=True)
 
-ISI = visual.TextStim(win,text=" ",color='red', height=20)
+ISI = visual.TextStim(win,text=" ")
 
-directionList= [{'dirName': 'LEFT', 'dirVal': 180.0}, {'dirName': 'RIGHT', 'dirVal': 0.0}, {'dirName': 'UP', 'dirVal': 90.0}, {'dirName': 'DOWN', 'dirVal': -90.0}]
-#rnd.shuffle(directionList)
-blockList = [{'blockName': 'PALM UP', 'blockVal': 'PALM UP'}, {'blockName': 'PALM DOWN', 'blockVal': 'PALM DOWN'}]
+block_message=visual.TextStim(win)
+
+#set the keyboard
+kb = keyboard.Keyboard()
+
+#constants
+if int(info['subNb']) % 2 == 0:
+    handPos = ['palmup','palmdown']
+else:
+    handPos = ['palmdown','palmup'] 
+
+nBlocks = 2
 
 stimulus_duration = 1
 response_duration = 2
 ISI_duration = 2
-IBI_duration = 2
 
-trials = data.TrialHandler(directionList, nReps=1, extraInfo=exp_info,
-                           method='random', originPath=datapath)
-                    
-blocks = data.TrialHandler(blockList, nReps=1, extraInfo=exp_info,
-                           method='sequential', originPath=datapath)
-
-
+#set the clocks
 stimulus_onset = core.Clock()
-rt_clock = core.Clock()
-ISI_onset = core.Clock()
 key_onset = core.Clock()
+ISI_onset = core.Clock()
 
-kb = keyboard.Keyboard()
+dirVal=[0.0, 180.0, 90.0, -90.0] #direction values
 
-block_message=visual.TextStim(win)
-textA = visual.TextStim(win, text='Block: Hand PositionA')
-textB = visual.TextStim(win, text='Block: Hand PositionB')
 
-countBlock = 0
-for iBlock in blocks:
-    print(iBlock['blockVal'])
-    # Display trial start text
-    block_message.setText(iBlock['blockVal'])
-    block_message.draw()
-    win.flip()
-    core.wait(3) 
+for iBlock in range(nBlocks):
+        textBlock=handPos[iBlock]
+        block_message.setText(textBlock)
+        block_message.draw()
+        win.flip() 
+        keys = event.waitKeys(keyList=['space']) # Wait for a spacebar press to start the trial
+        np.random.shuffle(dirVal) #list of directions shuffled in each block
     
-    #nDone = 0
-    for itrial in trials:
-        print(itrial['dirVal'])
-        # Set the clocks to 0
-        stimulus_onset.reset()
-        ISI_onset.reset()
-        key_onset.reset()
-        kb.clock.reset()  # when you want to start the timer from
-        keys = kb.getKeys(['right', 'left', 'up','down'])
-        # Start the trial
-        while stimulus_onset.getTime() < stimulus_duration:
-            rdk.setDir(itrial['dirVal'])
-            fixSpot.draw()
-            rdk.draw()
-            win.flip()
-            # For the stimulus duration,
-            # Listen for the keys
-        while key_onset.getTime() <= response_duration:
-            keys = kb.getKeys(['right', 'left', 'up','down', 'escape'])
-            if len(keys) > 0:
-                break
-        for key in keys:
-            keyResponse = key.name
-            rt= key.rt
-            print(key.name, key.rt, key.duration)
-            trials.data.add('itrial', itrial['dirVal'])
-            trials.data.add('iBlock', iBlock['blockVal'])
-            trials.data.add('rt', rt)  # add the data to our set
-            trials.data.add('keyResponse', keyResponse)
-      
-        while ISI_onset.getTime() < ISI_duration:
-            ISI.draw()
-            win.flip()
-            
-        # Add the current trial's data to the TrialHandler
+        for iTrial in range(4):
+            print(dirVal[iTrial])
+            # Set the clocks to 0
+            stimulus_onset.reset()
+            key_onset.reset()
+            kb.clock.reset()  # when you want to start the timer from
+            ISI_onset.reset() 
+            keys = kb.getKeys(['right', 'left', 'up','down'])
+            # Start the trial
+            while stimulus_onset.getTime() < stimulus_duration:
+                rdk.setDir(dirVal[iTrial])
+                fixCross.draw()
+                rdk.draw()
+                win.flip()
+                # For the stimulus duration,
+                # Listen for the keys
+            while key_onset.getTime() <= response_duration:
+                keys = kb.getKeys(['right', 'left', 'up','down', 'escape'])
+                if len(keys) > 0:
+                    break
+            for key in keys:
+                keyResponse = key.name
+                rt= key.rt
+                print(key.name, key.rt)
+                #analyse responses
+                if dirVal[iTrial] == 0.0 and keyResponse == 'right':
+                    accu =1
+                elif dirVal[iTrial] == 180.0 and keyResponse == 'left':
+                    accu =1
+                elif dirVal[iTrial] == 90.0 and keyResponse == 'up':
+                    accu =1
+                elif dirVal[iTrial] == -90.0 and keyResponse == 'down':
+                    accu =1
+                else:
+                    accu = 0
 
+                #
+                row=info['subNb'],iBlock+1,textBlock,iTrial+1,dirVal[iTrial],keyResponse,rt, accu
+                writer.writerow(row)
+          
+            while ISI_onset.getTime() < ISI_duration:
+                ISI.draw()
+                win.flip()
+                            
         
-     
-        #nDone += 1
-        
-
-    # Wait for a spacebar press to start the trial, or escape to quit
-    #keys = event.waitKeys(keyList=['space'])
-    countBlock +=1
-
-'''
-text = visual.TextStim(win, text='Block: Hand Position')
-text.draw()
-win.flip()
-core.wait(3)  # seconds
-'''
-
-
-
-    # Advance to the next trial
-
-
-#======================
-# End of the experiment
-#======================
-
-# Save all data to a file
-trials.saveAsWideText(data_fname + '.csv', delim=',')
+        win.flip()
+        core.wait(1)
 
 # Quit the experiment
 win.close()
